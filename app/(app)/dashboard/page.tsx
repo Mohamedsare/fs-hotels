@@ -1,30 +1,75 @@
-// Tableau de bord hôtel (squelette MVP — hotels.md §A).
-// Les chiffres seront branchés sur la base (chambres / arrivées / CA) en phase suivante.
+import { Card, PageHeader } from "@/components/ui/ui";
+import { getActiveHotel } from "@/lib/hotel/active-hotel";
+import { createClient } from "@/lib/supabase/server";
+import { formatCFA } from "@/lib/utils/format";
+import type { RoomStatus } from "@/types/db";
 
-const CARDS: { label: string; value: string; hint?: string }[] = [
-  { label: "Chambres libres", value: "—" },
-  { label: "Chambres occupées", value: "—" },
-  { label: "Arrivées du jour", value: "—" },
-  { label: "Départs du jour", value: "—" },
-  { label: "CA du jour", value: "—", hint: "FCFA" },
-  { label: "Taux d'occupation", value: "—", hint: "%" },
-];
+function todayParts() {
+  const d = new Date();
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
+  d.setHours(0, 0, 0, 0);
+  return { date, startISO: d.toISOString() };
+}
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const hotel = await getActiveHotel();
+  const supabase = await createClient();
+  const { date, startISO } = todayParts();
+
+  const [roomsRes, payRes, arrivalsRes, departuresRes] = await Promise.all([
+    supabase
+      .from("rooms")
+      .select("status")
+      .eq("hotel_id", hotel.id)
+      .eq("active", true),
+    supabase
+      .from("payments")
+      .select("amount")
+      .eq("hotel_id", hotel.id)
+      .gte("created_at", startISO),
+    supabase
+      .from("reservations")
+      .select("id", { count: "exact", head: true })
+      .eq("hotel_id", hotel.id)
+      .in("status", ["pending", "confirmed"])
+      .eq("check_in_date", date),
+    supabase
+      .from("stays")
+      .select("id", { count: "exact", head: true })
+      .eq("hotel_id", hotel.id)
+      .eq("status", "in_progress")
+      .eq("expected_check_out", date),
+  ]);
+
+  const rooms = (roomsRes.data ?? []) as { status: RoomStatus }[];
+  const total = rooms.length;
+  const occupied = rooms.filter((r) => r.status === "occupied").length;
+  const free = rooms.filter(
+    (r) => r.status === "available" || r.status === "clean",
+  ).length;
+  const caToday = (payRes.data ?? []).reduce(
+    (s, p) => s + Number((p as { amount: number }).amount),
+    0,
+  );
+  const occupancy = total > 0 ? Math.round((occupied / total) * 100) : 0;
+
+  const cards: { label: string; value: string; hint?: string }[] = [
+    { label: "Chambres libres", value: String(free) },
+    { label: "Chambres occupées", value: String(occupied) },
+    { label: "Arrivées du jour", value: String(arrivalsRes.count ?? 0) },
+    { label: "Départs du jour", value: String(departuresRes.count ?? 0) },
+    { label: "Encaissé aujourd'hui", value: formatCFA(caToday) },
+    { label: "Taux d'occupation", value: `${occupancy}`, hint: "%" },
+  ];
+
   return (
     <div>
-      <h1 className="text-2xl font-bold">Tableau de bord</h1>
-      <p className="mt-1 text-sm text-fs-on-surface-variant">
-        Vue d&apos;ensemble de l&apos;hôtel — squelette en place, données à
-        brancher.
-      </p>
-
-      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
-        {CARDS.map((c) => (
-          <div
-            key={c.label}
-            className="rounded-2xl border border-black/10 bg-fs-card p-4"
-          >
+      <PageHeader title={hotel.name} subtitle="Vue d'ensemble de l'hôtel." />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {cards.map((c) => (
+          <Card key={c.label}>
             <div className="text-xs font-medium text-fs-on-surface-variant">
               {c.label}
             </div>
@@ -36,7 +81,7 @@ export default function DashboardPage() {
                 </span>
               ) : null}
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     </div>

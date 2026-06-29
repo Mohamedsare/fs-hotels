@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { LogoutButton } from "./logout-button";
 
 const NAV = [
   { href: "/dashboard", label: "Tableau de bord" },
-  { href: "/rooms", label: "Chambres" },
   { href: "/reservations", label: "Réservations" },
-  { href: "/stays", label: "Séjours" },
+  { href: "/stays", label: "Séjours en cours" },
+  { href: "/rooms", label: "Chambres" },
+  { href: "/room-types", label: "Types de chambres" },
   { href: "/clients", label: "Clients" },
   { href: "/cash", label: "Caisse" },
+  { href: "/invoices", label: "Factures" },
   { href: "/reports", label: "Rapports" },
 ];
 
@@ -26,9 +29,9 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-dvh">
-      <aside className="hidden w-56 shrink-0 border-r border-black/10 bg-fs-card p-4 sm:block">
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-black/10 bg-fs-card p-4 sm:flex">
         <div className="text-lg font-bold">FasoStock Hôtels</div>
-        <nav className="mt-6 flex flex-col gap-1">
+        <nav className="mt-6 flex flex-1 flex-col gap-1">
           {NAV.map((n) => (
             <Link
               key={n.href}
@@ -39,6 +42,7 @@ export default async function AppLayout({
             </Link>
           ))}
         </nav>
+        <LogoutButton email={user.email} />
       </aside>
       <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
     </div>

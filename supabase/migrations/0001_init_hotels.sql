@@ -33,25 +33,11 @@ create type housekeeping_status as enum ('pending','in_progress','done','inspect
 create type maintenance_status as enum ('reported','in_progress','resolved','unresolved','blocked');
 
 -- =============================================================================
--- 2. Helpers RLS (SECURITY DEFINER => contournent RLS, évitent la récursion)
+-- 2. Helpers généraux
+-- (Les helpers RLS is_hotel_member / has_hotel_role sont définis en §3, APRÈS
+--  la table hotel_users : une fonction `language sql` valide son corps à la
+--  création, donc la table référencée doit déjà exister.)
 -- =============================================================================
-create or replace function is_hotel_member(p_hotel_id uuid)
-returns boolean language sql security definer stable set search_path = public as $$
-  select exists (
-    select 1 from hotel_users hu
-    where hu.hotel_id = p_hotel_id and hu.user_id = auth.uid() and hu.active
-  );
-$$;
-
-create or replace function has_hotel_role(p_hotel_id uuid, variadic p_roles hotel_role[])
-returns boolean language sql security definer stable set search_path = public as $$
-  select exists (
-    select 1 from hotel_users hu
-    where hu.hotel_id = p_hotel_id and hu.user_id = auth.uid() and hu.active
-      and hu.role = any(p_roles)
-  );
-$$;
-
 -- updated_at automatique
 create or replace function set_updated_at()
 returns trigger language plpgsql as $$
@@ -86,6 +72,25 @@ create table hotel_users (
   created_at timestamptz not null default now(),
   unique (hotel_id, user_id)
 );
+
+-- Helpers RLS (SECURITY DEFINER => contournent RLS, évitent la récursion).
+-- Définis ICI car ils référencent hotel_users (cf. note §2).
+create or replace function is_hotel_member(p_hotel_id uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from hotel_users hu
+    where hu.hotel_id = p_hotel_id and hu.user_id = auth.uid() and hu.active
+  );
+$$;
+
+create or replace function has_hotel_role(p_hotel_id uuid, variadic p_roles hotel_role[])
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from hotel_users hu
+    where hu.hotel_id = p_hotel_id and hu.user_id = auth.uid() and hu.active
+      and hu.role = any(p_roles)
+  );
+$$;
 
 -- Le créateur d'un hôtel devient automatiquement 'owner'
 create or replace function on_hotel_created()
