@@ -12,7 +12,6 @@ import {
   CalendarPlus,
   Check,
   CreditCard,
-  FileText,
   KeyRound,
   LayoutGrid,
   List,
@@ -242,7 +241,7 @@ export function ReceptionBoard(props: Props) {
     if (st) setSelectedStayId(st.id);
   };
 
-  const submitCheckIn = () => {
+  const submitCheckIn = (print: boolean) => {
     if (!ci.roomId) return toast.error("Sélectionnez une chambre libre.");
     if (!ci.checkout) return toast.error("Indiquez la date de départ.");
     if (rate <= 0) return toast.error("Indiquez le tarif par nuit.");
@@ -256,16 +255,25 @@ export function ReceptionBoard(props: Props) {
       fd.set("advance_paid", String(advance));
       fd.set("method", ci.method);
     }
-    run(() => createWalkInStay(FORM_IDLE, fd), "Check-in effectué.", () =>
-      set({
-        roomId: "",
-        clientId: "",
-        guests: "1",
-        nightlyRate: "",
-        checkout: "",
-        advance: "",
-      }),
-    );
+    startTransition(async () => {
+      const res = await createWalkInStay(FORM_IDLE, fd);
+      if (res.ok) {
+        toast.success("Check-in effectué. Clé remise, chambre occupée.");
+        set({
+          roomId: "",
+          clientId: "",
+          guests: "1",
+          nightlyRate: "",
+          checkout: "",
+          advance: "",
+        });
+        if (print && res.stayId)
+          window.open(`/reception/recu/${res.stayId}`, "_blank");
+        router.refresh();
+      } else {
+        toast.error(frError(res.error));
+      }
+    });
   };
 
   const TABS = [
@@ -563,14 +571,16 @@ export function ReceptionBoard(props: Props) {
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <Button disabled={pending} onClick={submitCheckIn}>
+                <Button disabled={pending} onClick={() => submitCheckIn(false)}>
                   <Check className="h-4 w-4" /> Valider le check-in
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => window.print()}
+                  disabled={pending}
+                  title="Valide le check-in puis ouvre le reçu à imprimer"
+                  onClick={() => submitCheckIn(true)}
                 >
-                  <Printer className="h-4 w-4" /> Imprimer reçu
+                  <Printer className="h-4 w-4" /> Valider + reçu
                 </Button>
               </div>
               {canReservations ? (
@@ -635,11 +645,18 @@ export function ReceptionBoard(props: Props) {
                   className="w-full"
                   disabled={pending}
                   onClick={() =>
-                    run(
-                      () => checkOutStay(selectedStay.id),
-                      "Check-out effectué. Facture générée.",
-                      () => setSelectedStayId(null),
-                    )
+                    startTransition(async () => {
+                      const res = await checkOutStay(selectedStay.id);
+                      if (res.ok) {
+                        toast.success("Check-out effectué. Facture générée.");
+                        setSelectedStayId(null);
+                        if (res.invoiceId && canInvoices)
+                          router.push(`/invoices/${res.invoiceId}`);
+                        else router.refresh();
+                      } else {
+                        toast.error(frError(res.error));
+                      }
+                    })
                   }
                 >
                   <LogOut className="h-4 w-4" /> Confirmer le check-out
@@ -742,16 +759,13 @@ export function ReceptionBoard(props: Props) {
                   >
                     <LogOut className="h-4 w-4" /> Check-out
                   </Button>
-                  {canInvoices ? (
-                    <Link
-                      href="/invoices"
-                      className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-black/10 bg-white px-2 text-xs font-semibold hover:bg-fs-surface-container"
-                    >
-                      <FileText className="h-4 w-4" /> Factures
-                    </Link>
-                  ) : (
-                    <span />
-                  )}
+                  <Link
+                    href={`/reception/recu/${selectedStay.id}`}
+                    target="_blank"
+                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-black/10 bg-white px-2 text-xs font-semibold hover:bg-fs-surface-container"
+                  >
+                    <Printer className="h-4 w-4" /> Reçu
+                  </Link>
                 </div>
               </div>
             )}

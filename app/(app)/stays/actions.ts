@@ -87,7 +87,7 @@ async function recomputeStay(supabase: SupabaseClient, stayId: string) {
 export async function createWalkInStay(
   _prev: FormState,
   fd: FormData,
-): Promise<FormState> {
+): Promise<FormState & { stayId?: string }> {
   const roomId = reqStr(fd, "room_id");
   const checkout = reqStr(fd, "expected_check_out");
   if (!roomId) return { ok: false, error: "Sélectionnez une chambre." };
@@ -129,7 +129,7 @@ export async function createWalkInStay(
     revalidatePath("/rooms");
     revalidatePath("/cash");
     revalidatePath("/reception");
-    return { ok: true };
+    return { ok: true, stayId };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
@@ -216,7 +216,9 @@ export async function extendStay(
 }
 
 /** Check-out : fige les totaux, génère la facture, libère (salit) la chambre. */
-export async function checkOutStay(stayId: string): Promise<FormState> {
+export async function checkOutStay(
+  stayId: string,
+): Promise<FormState & { invoiceId?: string }> {
   try {
     const hotelId = await getActiveHotelId();
     const supabase = await createClient();
@@ -318,7 +320,9 @@ export async function checkOutStay(stayId: string): Promise<FormState> {
     revalidatePath("/stays");
     revalidatePath("/rooms");
     revalidatePath("/cash");
-    return { ok: true };
+    revalidatePath("/reception");
+    revalidatePath("/invoices");
+    return { ok: true, invoiceId: invoiceId ?? undefined };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
