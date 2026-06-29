@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Logo } from "@/components/ui/logo";
+import { useToast } from "@/components/ui/toast";
+import { frError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const toast = useToast();
   const [ready, setReady] = useState<boolean | null>(null); // null = vérification en cours
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -22,13 +25,12 @@ export default function ResetPasswordPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     if (password.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      toast.error("Le mot de passe doit contenir au moins 6 caractères.");
       return;
     }
     if (password !== confirm) {
-      setError("Les mots de passe ne correspondent pas.");
+      toast.error("Les mots de passe ne correspondent pas.");
       return;
     }
     setBusy(true);
@@ -36,9 +38,10 @@ export default function ResetPasswordPage() {
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ password });
       if (error) {
-        setError(error.message);
+        toast.error(frError(error.message));
         return;
       }
+      toast.success("Mot de passe mis à jour. Redirection…");
       setDone(true);
       setTimeout(() => {
         router.replace("/dashboard");
@@ -52,7 +55,10 @@ export default function ResetPasswordPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center p-4">
       <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-fs-card p-6 shadow-xl">
-        <h1 className="text-xl font-bold">Nouveau mot de passe</h1>
+        <div className="mb-4 flex justify-center">
+          <Logo className="h-14 w-auto" />
+        </div>
+        <h1 className="text-center text-xl font-bold">Nouveau mot de passe</h1>
 
         {ready === false ? (
           <>
@@ -102,10 +108,6 @@ export default function ResetPasswordPage() {
                 className="mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 outline-none focus:border-fs-accent"
                 placeholder="••••••••"
               />
-
-              {error ? (
-                <p className="mt-3 text-sm font-medium text-red-600">{error}</p>
-              ) : null}
 
               <button
                 type="submit"

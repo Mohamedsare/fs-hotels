@@ -297,6 +297,40 @@ html.dark .fs-owner-dashboard {
   }
 }
 
+/* =====================================================================
+ * Toasts (notifications) — entrée/sortie fluides + barre de progression.
+ * ===================================================================== */
+@keyframes fs-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fs-toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+}
+
+@keyframes fs-toast-bar {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
 /* Spinner AppShell : reduced motion en CSS (évite mismatch d’hydratation lié aux variantes `motion-reduce:` sur SSR vs client). */
 @media (prefers-reduced-motion: reduce) {
   .fs-app-shell-loading-spinner {

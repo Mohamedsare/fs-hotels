@@ -2,7 +2,9 @@
 
 import { Modal } from "@/components/ui/modal";
 import { ResourceForm } from "@/components/ui/resource-form";
+import { useToast } from "@/components/ui/toast";
 import { Button, Field, Input, Select } from "@/components/ui/ui";
+import { frError } from "@/lib/errors";
 import type { Client, Room, RoomType } from "@/types/db";
 import { useState } from "react";
 import {
@@ -24,7 +26,11 @@ export function NewReservationButton({
       trigger={(open) => <Button onClick={open}>+ Nouvelle réservation</Button>}
     >
       {(close) => (
-        <ResourceForm action={createReservation} close={close}>
+        <ResourceForm
+          action={createReservation}
+          close={close}
+          successMessage="Réservation enregistrée."
+        >
           <Field label="Client">
             <Select name="client_id" defaultValue="">
               <option value="">— (sans client)</option>
@@ -108,8 +114,8 @@ function CheckInForm({
   availableRooms: Room[];
   close: () => void;
 }) {
+  const toast = useToast();
   const [roomId, setRoomId] = useState(availableRooms[0]?.id ?? "");
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (availableRooms.length === 0)
@@ -131,18 +137,18 @@ function CheckInForm({
           ))}
         </Select>
       </Field>
-      {error ? (
-        <p className="text-sm font-medium text-red-600">{error}</p>
-      ) : null}
       <Button
         disabled={busy || !roomId}
         onClick={async () => {
           setBusy(true);
-          setError(null);
           const res = await checkInReservation(reservationId, roomId);
           setBusy(false);
-          if (res.ok) close();
-          else setError(res.error ?? "Échec du check-in.");
+          if (res.ok) {
+            toast.success("Check‑in effectué. Séjour ouvert.");
+            close();
+          } else {
+            toast.error(frError(res.error ?? "Échec du check‑in."));
+          }
         }}
       >
         {busy ? "…" : "Confirmer le check-in"}
@@ -152,6 +158,7 @@ function CheckInForm({
 }
 
 export function ReservationActions({ id }: { id: string }) {
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   return (
     <div className="flex gap-2">
@@ -163,6 +170,7 @@ export function ReservationActions({ id }: { id: string }) {
           setBusy(true);
           await setReservationStatus(id, "cancelled");
           setBusy(false);
+          toast.info("Réservation annulée.");
         }}
       >
         Annuler

@@ -17,7 +17,11 @@ export function NewExpenseButton() {
       )}
     >
       {(close) => (
-        <ResourceForm action={addExpense} close={close}>
+        <ResourceForm
+          action={addExpense}
+          close={close}
+          successMessage="Dépense enregistrée."
+        >
           <Field label="Libellé" required>
             <Input name="label" required placeholder="Achat savon…" />
           </Field>

@@ -3,18 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Logo } from "@/components/ui/logo";
+import { useToast } from "@/components/ui/toast";
+import { frError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setBusy(true);
     try {
       const supabase = createClient();
@@ -23,9 +25,10 @@ export default function LoginPage() {
         password,
       });
       if (error) {
-        setError(error.message);
+        toast.error(frError(error.message));
         return;
       }
+      toast.success("Connexion réussie. Bienvenue !");
       router.replace("/dashboard");
       router.refresh();
     } finally {
@@ -39,8 +42,11 @@ export default function LoginPage() {
         onSubmit={onSubmit}
         className="w-full max-w-sm rounded-2xl border border-black/10 bg-fs-card p-6 shadow-xl"
       >
-        <h1 className="text-xl font-bold">FasoStock Hôtels</h1>
-        <p className="mt-1 text-sm text-fs-on-surface-variant">
+        <div className="mb-4 flex justify-center">
+          <Logo className="h-16 w-auto" />
+        </div>
+        <h1 className="text-center text-xl font-bold">FasoStock Hôtels</h1>
+        <p className="mt-1 text-center text-sm text-fs-on-surface-variant">
           Connectez-vous pour gérer votre hôtel.
         </p>
 
@@ -71,10 +77,6 @@ export default function LoginPage() {
           className="mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 outline-none focus:border-fs-accent"
           placeholder="••••••••"
         />
-
-        {error ? (
-          <p className="mt-3 text-sm font-medium text-red-600">{error}</p>
-        ) : null}
 
         <button
           type="submit"

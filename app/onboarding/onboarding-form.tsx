@@ -1,24 +1,32 @@
 "use client";
 
 import { SubmitButton } from "@/components/ui/modal";
+import { useToast } from "@/components/ui/toast";
 import { Field, Input, Select } from "@/components/ui/ui";
 import { FORM_IDLE } from "@/lib/forms";
+import { frError } from "@/lib/errors";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef } from "react";
 import { createHotel } from "./actions";
 
 export function OnboardingForm() {
   const router = useRouter();
+  const toast = useToast();
   const [state, formAction] = useActionState(createHotel, FORM_IDLE);
   const done = useRef(false);
+  const lastError = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (state.ok && !done.current) {
       done.current = true;
+      toast.success("Établissement créé. Bienvenue sur FasoStock Hôtels !");
       router.replace("/dashboard");
       router.refresh();
+    } else if (state.error && state.error !== lastError.current) {
+      lastError.current = state.error;
+      toast.error(frError(state.error));
     }
-  }, [state, router]);
+  }, [state, router, toast]);
 
   return (
     <form action={formAction} className="space-y-3">
@@ -44,9 +52,6 @@ export function OnboardingForm() {
       <Field label="Taxe touristique (FCFA / personne / nuit)">
         <Input name="tourism_tax_per_night" inputMode="numeric" placeholder="200" />
       </Field>
-      {state.error ? (
-        <p className="text-sm font-medium text-red-600">{state.error}</p>
-      ) : null}
       <div className="pt-1">
         <SubmitButton>Créer l&apos;hôtel</SubmitButton>
       </div>

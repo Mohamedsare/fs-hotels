@@ -2,8 +2,10 @@
 
 import { Modal, SubmitButton } from "@/components/ui/modal";
 import { ResourceForm } from "@/components/ui/resource-form";
+import { useToast } from "@/components/ui/toast";
 import { Button, Field, Input, Select } from "@/components/ui/ui";
 import { FORM_IDLE } from "@/lib/forms";
+import { frError } from "@/lib/errors";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/labels";
 import type { Client, Room, Service } from "@/types/db";
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -36,6 +38,7 @@ export function NewWalkInStayButton({
             action={createWalkInStay}
             close={close}
             submitLabel="Check-in"
+            successMessage="Check‑in direct effectué."
           >
             <Field label="Chambre" required>
               <Select name="room_id" required defaultValue={availableRooms[0]?.id}>
@@ -107,6 +110,7 @@ function ConsumptionForm({
   services: Service[];
   close: () => void;
 }) {
+  const toast = useToast();
   const [state, formAction] = useActionState(addConsumption, FORM_IDLE);
   const [label, setLabel] = useState("");
   const [price, setPrice] = useState("");
@@ -114,9 +118,17 @@ function ConsumptionForm({
   useEffect(() => {
     onDone.current = close;
   });
+  const processed = useRef(state);
   useEffect(() => {
-    if (state.ok) onDone.current();
-  }, [state]);
+    if (state === processed.current) return;
+    processed.current = state;
+    if (state.ok) {
+      toast.success("Consommation ajoutée.");
+      onDone.current();
+    } else if (state.error) {
+      toast.error(frError(state.error));
+    }
+  }, [state, toast]);
 
   return (
     <form action={formAction} className="space-y-3">
@@ -165,9 +177,6 @@ function ConsumptionForm({
           <Input name="quantity" inputMode="numeric" defaultValue={1} />
         </Field>
       </div>
-      {state.error ? (
-        <p className="text-sm font-medium text-red-600">{state.error}</p>
-      ) : null}
       <SubmitButton>Ajouter</SubmitButton>
     </form>
   );
@@ -184,7 +193,12 @@ export function AddPaymentButton({ stayId }: { stayId: string }) {
       )}
     >
       {(close) => (
-        <ResourceForm action={addPayment} close={close} submitLabel="Encaisser">
+        <ResourceForm
+          action={addPayment}
+          close={close}
+          submitLabel="Encaisser"
+          successMessage="Paiement encaissé."
+        >
           <input type="hidden" name="stay_id" value={stayId} />
           <Field label="Montant" required>
             <Input name="amount" inputMode="numeric" required />
@@ -208,28 +222,26 @@ export function AddPaymentButton({ stayId }: { stayId: string }) {
 }
 
 export function CheckOutButton({ stayId }: { stayId: string }) {
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   return (
-    <span>
-      <Button
-        variant="danger"
-        className="h-8 px-3 text-xs"
-        disabled={busy}
-        onClick={async () => {
-          if (!confirm("Confirmer le check-out et générer la facture ?")) return;
-          setBusy(true);
-          setError(null);
-          const res = await checkOutStay(stayId);
-          setBusy(false);
-          if (!res.ok) setError(res.error ?? "Échec.");
-        }}
-      >
-        {busy ? "…" : "Check-out"}
-      </Button>
-      {error ? (
-        <span className="ml-2 text-xs font-medium text-red-600">{error}</span>
-      ) : null}
-    </span>
+    <Button
+      variant="danger"
+      className="h-8 px-3 text-xs"
+      disabled={busy}
+      onClick={async () => {
+        if (!confirm("Confirmer le check-out et générer la facture ?")) return;
+        setBusy(true);
+        const res = await checkOutStay(stayId);
+        setBusy(false);
+        if (res.ok) {
+          toast.success("Check‑out effectué. Facture générée.");
+        } else {
+          toast.error(frError(res.error ?? "Échec du check‑out."));
+        }
+      }}
+    >
+      {busy ? "…" : "Check-out"}
+    </Button>
   );
 }

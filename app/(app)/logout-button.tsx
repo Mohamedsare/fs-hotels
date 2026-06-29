@@ -2,16 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 
 export function LogoutButton({ email }: { email?: string | null }) {
   const router = useRouter();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
 
   const onLogout = async () => {
     setBusy(true);
     const supabase = createClient();
     await supabase.auth.signOut();
+    toast.info("Vous êtes déconnecté.");
     router.replace("/login");
     router.refresh();
   };

@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Logo } from "@/components/ui/logo";
+import { useToast } from "@/components/ui/toast";
+import { frError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
+  const toast = useToast();
   const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setBusy(true);
     try {
       const supabase = createClient();
@@ -20,10 +22,11 @@ export default function ForgotPasswordPage() {
         redirectTo: `${window.location.origin}/auth/confirm?next=/auth/reset-password`,
       });
       if (error) {
-        setError(error.message);
+        toast.error(frError(error.message));
         return;
       }
       // On affiche toujours le succès (ne révèle pas si l'e‑mail existe).
+      toast.success("E‑mail de réinitialisation envoyé (vérifiez vos spams).");
       setSent(true);
     } finally {
       setBusy(false);
@@ -33,8 +36,11 @@ export default function ForgotPasswordPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center p-4">
       <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-fs-card p-6 shadow-xl">
-        <h1 className="text-xl font-bold">Mot de passe oublié</h1>
-        <p className="mt-1 text-sm text-fs-on-surface-variant">
+        <div className="mb-4 flex justify-center">
+          <Logo className="h-14 w-auto" />
+        </div>
+        <h1 className="text-center text-xl font-bold">Mot de passe oublié</h1>
+        <p className="mt-1 text-center text-sm text-fs-on-surface-variant">
           Saisissez votre adresse e‑mail : nous vous enverrons un lien de
           réinitialisation.
         </p>
@@ -55,10 +61,6 @@ export default function ForgotPasswordPage() {
               className="mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 outline-none focus:border-fs-accent"
               placeholder="vous@hotel.bf"
             />
-
-            {error ? (
-              <p className="mt-3 text-sm font-medium text-red-600">{error}</p>
-            ) : null}
 
             <button
               type="submit"
