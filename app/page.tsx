@@ -96,7 +96,7 @@ export default async function LandingPage() {
                   réunis dans une seule application rapide, simple et accessible
                   partout, sur mobile comme sur PC.
                 </p>
-                <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
+                <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
                   <Link
                     href={signedIn ? "/dashboard" : "/signup"}
                     className="group inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-fs-accent px-6 py-3 text-sm font-bold text-white shadow-xl shadow-fs-accent/30 transition-transform hover:scale-[1.03] active:scale-100 sm:w-auto sm:text-base"
@@ -125,7 +125,7 @@ export default async function LandingPage() {
               </div>
 
               {/* Colonne visuelle — maquette de l'application */}
-              <div className="relative">
+              <div className="relative mx-auto w-full max-w-md lg:max-w-none">
                 <div
                   aria-hidden="true"
                   className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-to-tr from-[#ffe8db] to-[#fff7f1] blur-2xl"
