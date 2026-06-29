@@ -403,15 +403,6 @@ html.dark .fs-owner-dashboard {
   }
 }
 
-@keyframes fs-hero-parallax {
-  from {
-    transform: translate3d(0, -2%, 0) scale(1.06);
-  }
-  to {
-    transform: translate3d(0, 8%, 0) scale(1.06);
-  }
-}
-
 @keyframes fs-hero-text-rise {
   from {
     opacity: 0;
@@ -558,13 +549,8 @@ html.dark .fs-owner-dashboard {
     [data-fs-stagger] > *:nth-child(8)  { animation-range: entry 24% cover 42%; }
     [data-fs-stagger] > *:nth-child(n + 9) { animation-range: entry 26% cover 44%; }
 
-    /* Parallaxe de l'image de fond du hero */
-    #accueil img[aria-hidden="true"] {
-      animation: fs-hero-parallax linear both;
-      animation-timeline: view(block);
-      animation-range: entry 0% exit 100%;
-      will-change: transform;
-    }
+    /* Image de fond du hero : volontairement FIXE (pas de parallaxe).
+     * On garde l'image immobile pour éviter tout effet de glissement. */
 
     /* Léger fondu du contenu hero quand on quitte la zone */
     main > section#accueil > div > div {

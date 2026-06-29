@@ -1,0 +1,49 @@
+<svg width="1920" height="1280" viewBox="0 0 1920 1280" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff7f0"/>
+      <stop offset="50%" stop-color="#fff1e6"/>
+      <stop offset="100%" stop-color="#ffe9da"/>
+    </linearGradient>
+    <radialGradient id="tl" cx="0%" cy="0%" r="75%">
+      <stop offset="0%" stop-color="#ffd9c4" stop-opacity="0.9"/>
+      <stop offset="60%" stop-color="#ffd9c4" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffd9c4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="tr" cx="100%" cy="0%" r="70%">
+      <stop offset="0%" stop-color="#ffe7a8" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#ffe7a8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="br" cx="100%" cy="100%" r="80%">
+      <stop offset="0%" stop-color="#e85d2c" stop-opacity="0.35"/>
+      <stop offset="55%" stop-color="#e85d2c" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#e85d2c" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bl" cx="0%" cy="100%" r="70%">
+      <stop offset="0%" stop-color="#ffc6a0" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#ffc6a0" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="56" height="56" patternUnits="userSpaceOnUse">
+      <path d="M56 0H0V56" fill="none" stroke="#e85d2c" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+  </defs>
+
+  <!-- Tout est plein cadre et ancré dans les coins : aucun motif central qui
+       paraîtrait « coupé » lorsque l'image est recadrée (object-cover). -->
+  <rect width="1920" height="1280" fill="url(#base)"/>
+  <rect width="1920" height="1280" fill="url(#grid)"/>
+  <rect width="1920" height="1280" fill="url(#tl)"/>
+  <rect width="1920" height="1280" fill="url(#tr)"/>
+  <rect width="1920" height="1280" fill="url(#br)"/>
+  <rect width="1920" height="1280" fill="url(#bl)"/>
+
+  <g filter="url(#soft)" opacity="0.55">
+    <circle cx="180" cy="170" r="150" fill="#ffba8e"/>
+    <circle cx="1780" cy="150" r="180" fill="#ffd58a"/>
+    <circle cx="1740" cy="1140" r="200" fill="#f0744a"/>
+    <circle cx="220" cy="1120" r="160" fill="#ffc6a0"/>
+  </g>
+</svg>
