@@ -22,7 +22,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-colors disabled:opacity-50",
+        "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-semibold transition-colors disabled:opacity-50",
         styles,
         className,
       )}

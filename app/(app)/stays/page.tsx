@@ -1,5 +1,8 @@
-import { Badge, Card, EmptyState, PageHeader } from "@/components/ui/ui";
+import { Badge, EmptyState, PageHeader } from "@/components/ui/ui";
+import { DataTable, type Column } from "@/components/ui/table";
 import { getActiveHotel } from "@/lib/hotel/active-hotel";
+import { getActiveMembership } from "@/lib/hotel/membership";
+import { can } from "@/lib/permissions";
 import { PAYMENT_STATUS } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 import { formatCFA, formatDate, nightsBetween } from "@/lib/utils/format";
@@ -40,13 +43,105 @@ export default async function StaysPage() {
   const clients = (clientsRes.data ?? []) as Client[];
   const services = (servicesRes.data ?? []) as Service[];
 
+  const m = await getActiveMembership();
+  const canWrite = can(m, "stays");
+
+  const columns: Column<Stay>[] = [
+    {
+      key: "room",
+      header: "Chambre",
+      cell: (s) => (
+        <span className="font-semibold text-fs-text">
+          Ch. {s.room?.number ?? "—"}
+        </span>
+      ),
+    },
+    {
+      key: "client",
+      header: "Client",
+      cell: (s) => s.client?.name ?? "Client de passage",
+    },
+    {
+      key: "payment",
+      header: "Paiement",
+      cell: (s) => {
+        const ps = PAYMENT_STATUS[s.payment_status];
+        return <Badge tone={ps.tone}>{ps.label}</Badge>;
+      },
+    },
+    {
+      key: "period",
+      header: "Séjour",
+      cell: (s) => {
+        const nights = nightsBetween(s.check_in_at, s.expected_check_out);
+        return (
+          <span className="whitespace-nowrap text-fs-on-surface-variant">
+            {formatDate(s.check_in_at)} → {formatDate(s.expected_check_out)}
+            <span className="text-fs-text"> · {nights} n.</span>
+          </span>
+        );
+      },
+    },
+    {
+      key: "total",
+      header: "Total",
+      align: "right",
+      cell: (s) => (
+        <span className="font-bold text-fs-text">{formatCFA(s.grand_total)}</span>
+      ),
+    },
+    {
+      key: "paid",
+      header: "Payé",
+      align: "right",
+      cell: (s) => formatCFA(s.paid_total),
+    },
+    {
+      key: "balance",
+      header: "Reste",
+      align: "right",
+      cell: (s) => {
+        const balance = Number(s.grand_total) - Number(s.paid_total);
+        return (
+          <span
+            className={
+              balance > 0 ? "font-bold text-red-600" : "font-bold text-green-700"
+            }
+          >
+            {formatCFA(Math.max(0, balance))}
+          </span>
+        );
+      },
+    },
+  ];
+
+  if (canWrite) {
+    columns.push({
+      key: "actions",
+      header: "",
+      align: "right",
+      cell: (s) => (
+        <div className="flex items-center justify-end gap-2">
+          <AddConsumptionButton stayId={s.id} services={services} />
+          <AddPaymentButton stayId={s.id} />
+          <CheckOutButton stayId={s.id} />
+        </div>
+      ),
+    });
+  }
+
   return (
     <div>
       <PageHeader
         title="Séjours en cours"
         subtitle={`${stays.length} client(s) logé(s)`}
         action={
-          <NewWalkInStayButton availableRooms={availableRooms} clients={clients} />
+          canWrite ? (
+            <NewWalkInStayButton
+              availableRooms={availableRooms}
+              clients={clients}
+            />
+          ) : undefined
         }
       />
       {stays.length === 0 ? (
@@ -55,88 +150,7 @@ export default async function StaysPage() {
           check-in direct.
         </EmptyState>
       ) : (
-        <div className="space-y-3">
-          {stays.map((s) => {
-            const ps = PAYMENT_STATUS[s.payment_status];
-            const nights = nightsBetween(s.check_in_at, s.expected_check_out);
-            const balance = Number(s.grand_total) - Number(s.paid_total);
-            return (
-              <Card key={s.id}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold">
-                        Ch. {s.room?.number ?? "—"}
-                      </span>
-                      <span className="font-medium">
-                        {s.client?.name ?? "Client de passage"}
-                      </span>
-                      <Badge tone={ps.tone}>{ps.label}</Badge>
-                    </div>
-                    <div className="mt-0.5 text-sm text-fs-on-surface-variant">
-                      Entré le {formatDate(s.check_in_at)} · départ prévu{" "}
-                      {formatDate(s.expected_check_out)} · {nights} nuit(s) ·{" "}
-                      {formatCFA(s.nightly_rate)}/nuit
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-fs-on-surface-variant">
-                      Total estimé
-                    </div>
-                    <div className="text-lg font-extrabold">
-                      {formatCFA(s.grand_total)}
-                    </div>
-                    <div className="text-xs text-fs-on-surface-variant">
-                      Payé {formatCFA(s.paid_total)} · Reste{" "}
-                      <span
-                        className={
-                          balance > 0
-                            ? "font-bold text-red-600"
-                            : "font-bold text-green-700"
-                        }
-                      >
-                        {formatCFA(Math.max(0, balance))}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-fs-on-surface-variant sm:grid-cols-4">
-                  <div>
-                    Chambre
-                    <div className="font-semibold text-fs-text">
-                      {formatCFA(s.room_total)}
-                    </div>
-                  </div>
-                  <div>
-                    Consommations
-                    <div className="font-semibold text-fs-text">
-                      {formatCFA(s.services_total)}
-                    </div>
-                  </div>
-                  <div>
-                    Taxe touristique
-                    <div className="font-semibold text-fs-text">
-                      {formatCFA(s.tax_total)}
-                    </div>
-                  </div>
-                  <div>
-                    Personnes
-                    <div className="font-semibold text-fs-text">
-                      {s.guests_count}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <AddConsumptionButton stayId={s.id} services={services} />
-                  <AddPaymentButton stayId={s.id} />
-                  <CheckOutButton stayId={s.id} />
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+        <DataTable columns={columns} rows={stays} rowKey={(s) => s.id} />
       )}
     </div>
   );

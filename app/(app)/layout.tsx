@@ -1,19 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { LogoutButton } from "./logout-button";
-
-const NAV = [
-  { href: "/dashboard", label: "Tableau de bord" },
-  { href: "/reservations", label: "Réservations" },
-  { href: "/stays", label: "Séjours en cours" },
-  { href: "/rooms", label: "Chambres" },
-  { href: "/room-types", label: "Types de chambres" },
-  { href: "/clients", label: "Clients" },
-  { href: "/cash", label: "Caisse" },
-  { href: "/invoices", label: "Factures" },
-  { href: "/reports", label: "Rapports" },
-];
+import { getActiveMembership } from "@/lib/hotel/membership";
+import { can, isAdmin } from "@/lib/permissions";
+import { SidebarNav } from "./sidebar-nav";
 
 // Garde d'authentification : tout l'espace (app) exige une session.
 export default async function AppLayout({
@@ -27,24 +16,41 @@ export default async function AppLayout({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const m = await getActiveMembership();
+  const admin = isAdmin(m);
+  const canCatalog = admin || m.role === "manager";
+
+  // Entrées de navigation autorisées selon le rôle / les permissions.
+  const allowed = [
+    "/dashboard",
+    can(m, "reservations") && "/reservations",
+    can(m, "stays") && "/stays",
+    can(m, "rooms") && "/rooms",
+    canCatalog && "/room-types",
+    can(m, "clients") && "/clients",
+    can(m, "cash") && "/cash",
+    can(m, "invoices") && "/invoices",
+    can(m, "reports") && "/reports",
+    admin && "/staff",
+    m.isPlatformAdmin && "/platform",
+  ].filter((x): x is string => typeof x === "string");
+
+  // Hôtels accessibles (pour le sélecteur). RLS limite déjà au périmètre.
+  const { data: hotelRows } = await supabase
+    .from("hotels")
+    .select("id, name")
+    .order("created_at", { ascending: true });
+  const hotels = (hotelRows ?? []) as { id: string; name: string }[];
+
   return (
-    <div className="flex min-h-dvh">
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-black/10 bg-fs-card p-4 sm:flex">
-        <div className="text-lg font-bold">FasoStock Hôtels</div>
-        <nav className="mt-6 flex flex-1 flex-col gap-1">
-          {NAV.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-fs-surface-container"
-            >
-              {n.label}
-            </Link>
-          ))}
-        </nav>
-        <LogoutButton email={user.email} />
-      </aside>
-      <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+    <div className="flex min-h-dvh flex-col sm:flex-row">
+      <SidebarNav
+        email={user.email}
+        allowed={allowed}
+        hotels={hotels}
+        activeHotelId={m.hotel.id}
+      />
+      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
     </div>
   );
 }

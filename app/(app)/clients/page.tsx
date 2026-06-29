@@ -1,8 +1,13 @@
-import { Badge, Card, EmptyState, PageHeader } from "@/components/ui/ui";
+import { Badge, EmptyState, PageHeader } from "@/components/ui/ui";
+import { DataTable, Dash, type Column } from "@/components/ui/table";
+import { DeleteButton, RowActions } from "@/components/ui/row-actions";
 import { getActiveHotel } from "@/lib/hotel/active-hotel";
+import { getActiveMembership } from "@/lib/hotel/membership";
+import { can, canDelete } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { Client } from "@/types/db";
-import { NewClientButton } from "./client-form";
+import { deleteClientRecord } from "./actions";
+import { EditClientButton, NewClientButton } from "./client-form";
 
 const TYPE_LABEL: Record<Client["type"], string> = {
   individual: "Particulier",
@@ -22,37 +27,79 @@ export default async function ClientsPage() {
     .order("created_at", { ascending: false });
   const clients = (data ?? []) as Client[];
 
+  const m = await getActiveMembership();
+  const canWrite = can(m, "clients");
+  const canDel = canDelete(m);
+
+  const columns: Column<Client>[] = [
+    {
+      key: "name",
+      header: "Nom",
+      cell: (c) => <span className="font-semibold text-fs-text">{c.name}</span>,
+    },
+    {
+      key: "type",
+      header: "Type",
+      cell: (c) => (
+        <Badge tone={c.type === "vip" ? "orange" : "neutral"}>
+          {TYPE_LABEL[c.type]}
+        </Badge>
+      ),
+    },
+    {
+      key: "phone",
+      header: "Téléphone",
+      cell: (c) => c.phone ?? <Dash />,
+    },
+    {
+      key: "company",
+      header: "Société",
+      cell: (c) => c.company_name ?? <Dash />,
+    },
+    {
+      key: "doc",
+      header: "Pièce",
+      cell: (c) =>
+        c.id_doc_number ? (
+          <span className="text-fs-on-surface-variant">
+            {c.id_doc_type ?? "Pièce"} · {c.id_doc_number}
+          </span>
+        ) : (
+          <Dash />
+        ),
+    },
+  ];
+
+  if (canWrite || canDel) {
+    columns.push({
+      key: "actions",
+      header: "",
+      align: "right",
+      cell: (c) => (
+        <RowActions>
+          {canWrite ? <EditClientButton client={c} /> : null}
+          {canDel ? (
+            <DeleteButton
+              action={deleteClientRecord.bind(null, c.id)}
+              itemLabel={c.name}
+            />
+          ) : null}
+        </RowActions>
+      ),
+    });
+  }
+
   return (
     <div>
       <PageHeader
         title="Clients"
         subtitle={`${clients.length} client(s)`}
-        action={<NewClientButton />}
+        action={canWrite ? <NewClientButton /> : undefined}
       />
       {clients.length === 0 ? (
         <EmptyState>Aucun client enregistré pour le moment.</EmptyState>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {clients.map((c) => (
-            <Card key={c.id}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="font-bold">{c.name}</div>
-                <Badge tone={c.type === "vip" ? "orange" : "neutral"}>
-                  {TYPE_LABEL[c.type]}
-                </Badge>
-              </div>
-              <div className="mt-1 text-sm text-fs-on-surface-variant">
-                {c.phone ?? "—"}
-                {c.company_name ? ` · ${c.company_name}` : ""}
-              </div>
-              {c.id_doc_number ? (
-                <div className="mt-0.5 text-xs text-fs-on-surface-variant">
-                  {c.id_doc_type ?? "Pièce"} : {c.id_doc_number}
-                </div>
-              ) : null}
-            </Card>
-          ))}
-        </div>
+        <DataTable columns={columns} rows={clients} rowKey={(c) => c.id} />
       )}
     </div>
   );

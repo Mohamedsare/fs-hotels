@@ -1,10 +1,17 @@
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui/ui";
+import { DataTable, Dash, type Column } from "@/components/ui/table";
 import { getActiveHotel } from "@/lib/hotel/active-hotel";
+import { getActiveMembership } from "@/lib/hotel/membership";
+import { can } from "@/lib/permissions";
 import { PAYMENT_METHOD } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 import { formatCFA, formatDateTime } from "@/lib/utils/format";
 import type { Payment, PaymentMethod } from "@/types/db";
 import { NewExpenseButton } from "./cash-ui";
+
+type PaymentRow = Payment & {
+  stay?: { room?: { number?: string } | null } | null;
+};
 
 type Expense = {
   id: string;
@@ -50,10 +57,76 @@ export default async function CashPage() {
       .gte("spent_at", today),
   ]);
 
-  const payments = (payRes.data ?? []) as (Payment & {
-    stay?: { room?: { number?: string } | null } | null;
-  })[];
+  const payments = (payRes.data ?? []) as PaymentRow[];
   const expenses = (expRes.data ?? []) as Expense[];
+
+  const m = await getActiveMembership();
+  const canWrite = can(m, "cash");
+
+  const paymentCols: Column<PaymentRow>[] = [
+    {
+      key: "amount",
+      header: "Montant",
+      align: "right",
+      cell: (p) => (
+        <span className="font-bold text-green-700">{formatCFA(p.amount)}</span>
+      ),
+    },
+    {
+      key: "method",
+      header: "Méthode",
+      cell: (p) => <Badge tone="blue">{PAYMENT_METHOD[p.method]}</Badge>,
+    },
+    {
+      key: "date",
+      header: "Date",
+      cell: (p) => (
+        <span className="whitespace-nowrap text-fs-on-surface-variant">
+          {formatDateTime(p.created_at)}
+        </span>
+      ),
+    },
+    {
+      key: "room",
+      header: "Chambre",
+      cell: (p) => (p.stay?.room?.number ? `Ch. ${p.stay.room.number}` : <Dash />),
+    },
+    {
+      key: "ref",
+      header: "Référence",
+      cell: (p) => p.reference ?? <Dash />,
+    },
+  ];
+
+  const expenseCols: Column<Expense>[] = [
+    {
+      key: "label",
+      header: "Libellé",
+      cell: (e) => <span className="font-medium text-fs-text">{e.label}</span>,
+    },
+    {
+      key: "method",
+      header: "Méthode",
+      cell: (e) => <Badge tone="neutral">{PAYMENT_METHOD[e.method]}</Badge>,
+    },
+    {
+      key: "date",
+      header: "Date",
+      cell: (e) => (
+        <span className="whitespace-nowrap text-fs-on-surface-variant">
+          {formatDateTime(e.spent_at)}
+        </span>
+      ),
+    },
+    {
+      key: "amount",
+      header: "Montant",
+      align: "right",
+      cell: (e) => (
+        <span className="font-bold text-red-600">-{formatCFA(e.amount)}</span>
+      ),
+    },
+  ];
   const inToday = (payTodayRes.data ?? []).reduce(
     (s, p) => s + Number((p as { amount: number }).amount),
     0,
@@ -68,7 +141,7 @@ export default async function CashPage() {
       <PageHeader
         title="Caisse"
         subtitle="Encaissements et dépenses."
-        action={<NewExpenseButton />}
+        action={canWrite ? <NewExpenseButton /> : undefined}
       />
 
       <div className="mb-5 grid grid-cols-3 gap-3">
@@ -102,23 +175,11 @@ export default async function CashPage() {
           {payments.length === 0 ? (
             <EmptyState>Aucun encaissement.</EmptyState>
           ) : (
-            <div className="space-y-2">
-              {payments.map((p) => (
-                <Card key={p.id} className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold">
-                      {formatCFA(p.amount)}{" "}
-                      <Badge tone="blue">{PAYMENT_METHOD[p.method]}</Badge>
-                    </div>
-                    <div className="text-xs text-fs-on-surface-variant">
-                      {formatDateTime(p.created_at)}
-                      {p.stay?.room?.number ? ` · Ch. ${p.stay.room.number}` : ""}
-                      {p.reference ? ` · ${p.reference}` : ""}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+            <DataTable
+              columns={paymentCols}
+              rows={payments}
+              rowKey={(p) => p.id}
+            />
           )}
         </div>
 
@@ -127,21 +188,7 @@ export default async function CashPage() {
           {expenses.length === 0 ? (
             <EmptyState>Aucune dépense.</EmptyState>
           ) : (
-            <div className="space-y-2">
-              {expenses.map((e) => (
-                <Card key={e.id} className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold">{e.label}</div>
-                    <div className="text-xs text-fs-on-surface-variant">
-                      {formatDateTime(e.spent_at)} · {PAYMENT_METHOD[e.method]}
-                    </div>
-                  </div>
-                  <div className="font-bold text-red-600">
-                    -{formatCFA(e.amount)}
-                  </div>
-                </Card>
-              ))}
-            </div>
+            <DataTable columns={expenseCols} rows={expenses} rowKey={(e) => e.id} />
           )}
         </div>
       </div>

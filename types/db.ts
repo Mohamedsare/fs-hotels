@@ -40,6 +40,7 @@ export type PaymentMethod =
 export type HotelRole =
   | "owner"
   | "manager"
+  | "employee"
   | "receptionist"
   | "housekeeping"
   | "restaurant_bar"
@@ -91,6 +92,16 @@ export interface Hotel {
   city: string | null;
   logo_url: string | null;
   currency: string;
+  created_at: string;
+}
+
+export interface HotelUser {
+  id: string;
+  hotel_id: string;
+  user_id: string;
+  role: HotelRole;
+  active: boolean;
+  permissions: string[];
   created_at: string;
 }
 

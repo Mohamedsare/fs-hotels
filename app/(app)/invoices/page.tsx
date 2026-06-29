@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Badge, Card, EmptyState, PageHeader } from "@/components/ui/ui";
+import { Badge, EmptyState, PageHeader } from "@/components/ui/ui";
+import { DataTable, Dash, type Column } from "@/components/ui/table";
 import { getActiveHotel } from "@/lib/hotel/active-hotel";
 import { INVOICE_TYPE } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
@@ -18,6 +18,58 @@ export default async function InvoicesPage() {
     .limit(100);
   const invoices = (data ?? []) as Invoice[];
 
+  const columns: Column<Invoice>[] = [
+    {
+      key: "number",
+      header: "N°",
+      cell: (inv) => (
+        <span className="font-semibold text-fs-text">{inv.number}</span>
+      ),
+    },
+    {
+      key: "type",
+      header: "Type",
+      cell: (inv) => <Badge tone="blue">{INVOICE_TYPE[inv.type]}</Badge>,
+    },
+    {
+      key: "date",
+      header: "Date",
+      cell: (inv) => (
+        <span className="text-fs-on-surface-variant">
+          {formatDate(inv.issued_at)}
+        </span>
+      ),
+    },
+    {
+      key: "client",
+      header: "Client",
+      cell: (inv) => inv.client?.name ?? <Dash />,
+    },
+    {
+      key: "total",
+      header: "Total",
+      align: "right",
+      cell: (inv) => (
+        <span className="font-bold text-fs-text">{formatCFA(inv.total)}</span>
+      ),
+    },
+    {
+      key: "balance",
+      header: "Solde",
+      align: "right",
+      cell: (inv) => {
+        const balance = Number(inv.total) - Number(inv.paid_total);
+        return balance > 0 ? (
+          <span className="font-semibold text-red-600">
+            Reste {formatCFA(balance)}
+          </span>
+        ) : (
+          <span className="font-semibold text-green-700">Soldée</span>
+        );
+      },
+    },
+  ];
+
   return (
     <div>
       <PageHeader
@@ -30,39 +82,12 @@ export default async function InvoicesPage() {
           check-out d&apos;un séjour.
         </EmptyState>
       ) : (
-        <div className="space-y-2">
-          {invoices.map((inv) => {
-            const balance = Number(inv.total) - Number(inv.paid_total);
-            return (
-              <Link key={inv.id} href={`/invoices/${inv.id}`} className="block">
-                <Card className="flex flex-wrap items-center justify-between gap-3 transition-colors hover:bg-fs-surface-container">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold">{inv.number}</span>
-                      <Badge tone="blue">{INVOICE_TYPE[inv.type]}</Badge>
-                    </div>
-                    <div className="mt-0.5 text-xs text-fs-on-surface-variant">
-                      {formatDate(inv.issued_at)}
-                      {inv.client?.name ? ` · ${inv.client.name}` : ""}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-extrabold">{formatCFA(inv.total)}</div>
-                    <div className="text-xs text-fs-on-surface-variant">
-                      {balance > 0 ? (
-                        <span className="font-semibold text-red-600">
-                          Reste {formatCFA(balance)}
-                        </span>
-                      ) : (
-                        <span className="font-semibold text-green-700">Soldée</span>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+        <DataTable
+          columns={columns}
+          rows={invoices}
+          rowKey={(inv) => inv.id}
+          rowHref={(inv) => `/invoices/${inv.id}`}
+        />
       )}
     </div>
   );

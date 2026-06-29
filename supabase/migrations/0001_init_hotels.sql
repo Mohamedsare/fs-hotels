@@ -408,7 +408,13 @@ end $$;
 -- hotels : lecture si membre ; création par tout utilisateur authentifié (devient owner via trigger) ;
 -- modification/suppression réservées owner/manager.
 alter table hotels enable row level security;
-create policy hotels_member_read on hotels for select using (is_hotel_member(id));
+drop policy if exists hotels_member_read on hotels;
+drop policy if exists hotels_insert on hotels;
+drop policy if exists hotels_admin_update on hotels;
+drop policy if exists hotels_owner_delete on hotels;
+-- Lecture : membre OU créateur (le « or created_by » permet de relire l'hôtel
+-- juste après l'INSERT ... RETURNING, avant que le trigger d'appartenance soit "vu").
+create policy hotels_member_read on hotels for select using (is_hotel_member(id) or created_by = auth.uid());
 create policy hotels_insert on hotels for insert with check (created_by = auth.uid());
 create policy hotels_admin_update on hotels for update using (has_hotel_role(id, 'owner','manager'));
 create policy hotels_owner_delete on hotels for delete using (has_hotel_role(id, 'owner'));

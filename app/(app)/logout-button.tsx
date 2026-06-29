@@ -2,10 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LogOut } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 
-export function LogoutButton({ email }: { email?: string | null }) {
+export function LogoutButton({
+  email,
+  collapsed = false,
+}: {
+  email?: string | null;
+  collapsed?: boolean;
+}) {
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -18,6 +25,22 @@ export function LogoutButton({ email }: { email?: string | null }) {
     router.replace("/login");
     router.refresh();
   };
+
+  if (collapsed) {
+    return (
+      <div className="mt-1 border-t border-black/10 pt-3">
+        <button
+          onClick={onLogout}
+          disabled={busy}
+          aria-label="Se déconnecter"
+          title="Se déconnecter"
+          className="fs-touch-target flex w-full items-center justify-center rounded-lg py-2 text-red-600 hover:bg-fs-surface-container disabled:opacity-50"
+        >
+          <LogOut className="h-5 w-5" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="border-t border-black/10 pt-3">

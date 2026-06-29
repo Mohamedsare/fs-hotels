@@ -2,11 +2,51 @@
 
 import { Modal } from "@/components/ui/modal";
 import { ResourceForm } from "@/components/ui/resource-form";
+import { editTrigger } from "@/components/ui/row-actions";
 import { Button, Field, Input, Select } from "@/components/ui/ui";
 import { ROOM_STATUS } from "@/lib/labels";
-import type { RoomStatus, RoomType } from "@/types/db";
+import type { Room, RoomStatus, RoomType } from "@/types/db";
 import { useState } from "react";
-import { createRoom, setRoomStatus } from "./actions";
+import { createRoom, setRoomStatus, updateRoom } from "./actions";
+
+function RoomFields({
+  roomTypes,
+  room,
+}: {
+  roomTypes: RoomType[];
+  room?: Room;
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Numéro" required>
+          <Input
+            name="number"
+            required
+            placeholder="204"
+            defaultValue={room?.number ?? ""}
+          />
+        </Field>
+        <Field label="Étage">
+          <Input name="floor" placeholder="2" defaultValue={room?.floor ?? ""} />
+        </Field>
+      </div>
+      <Field label="Type de chambre">
+        <Select name="room_type_id" defaultValue={room?.room_type_id ?? ""}>
+          <option value="">—</option>
+          {roomTypes.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Note">
+        <Input name="note" defaultValue={room?.note ?? ""} />
+      </Field>
+    </>
+  );
+}
 
 export function NewRoomButton({ roomTypes }: { roomTypes: RoomType[] }) {
   return (
@@ -16,27 +56,29 @@ export function NewRoomButton({ roomTypes }: { roomTypes: RoomType[] }) {
     >
       {(close) => (
         <ResourceForm action={createRoom} close={close}>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Numéro" required>
-              <Input name="number" required placeholder="204" />
-            </Field>
-            <Field label="Étage">
-              <Input name="floor" placeholder="2" />
-            </Field>
-          </div>
-          <Field label="Type de chambre">
-            <Select name="room_type_id" defaultValue="">
-              <option value="">—</option>
-              {roomTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Note">
-            <Input name="note" />
-          </Field>
+          <RoomFields roomTypes={roomTypes} />
+        </ResourceForm>
+      )}
+    </Modal>
+  );
+}
+
+export function EditRoomButton({
+  room,
+  roomTypes,
+}: {
+  room: Room;
+  roomTypes: RoomType[];
+}) {
+  return (
+    <Modal title={`Modifier la chambre ${room.number}`} trigger={editTrigger}>
+      {(close) => (
+        <ResourceForm
+          action={updateRoom.bind(null, room.id)}
+          close={close}
+          successMessage="Chambre mise à jour."
+        >
+          <RoomFields roomTypes={roomTypes} room={room} />
         </ResourceForm>
       )}
     </Modal>

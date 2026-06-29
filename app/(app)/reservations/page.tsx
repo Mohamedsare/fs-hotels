@@ -1,5 +1,8 @@
-import { Badge, Card, EmptyState, PageHeader } from "@/components/ui/ui";
+import { Badge, EmptyState, PageHeader } from "@/components/ui/ui";
+import { DataTable, Dash, type Column } from "@/components/ui/table";
 import { getActiveHotel } from "@/lib/hotel/active-hotel";
+import { getActiveMembership } from "@/lib/hotel/membership";
+import { can } from "@/lib/permissions";
 import { RESERVATION_STATUS } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 import { formatCFA, formatDate } from "@/lib/utils/format";
@@ -38,62 +41,97 @@ export default async function ReservationsPage() {
   const roomTypes = (typesRes.data ?? []) as RoomType[];
   const availableRooms = (roomsRes.data ?? []) as Room[];
 
+  const m = await getActiveMembership();
+  const canWrite = can(m, "reservations");
+
+  const columns: Column<Reservation>[] = [
+    {
+      key: "client",
+      header: "Client",
+      cell: (r) => (
+        <span className="font-semibold text-fs-text">
+          {r.client?.name ?? "Client de passage"}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Statut",
+      cell: (r) => {
+        const st = RESERVATION_STATUS[r.status];
+        return <Badge tone={st.tone}>{st.label}</Badge>;
+      },
+    },
+    {
+      key: "dates",
+      header: "Séjour",
+      cell: (r) => (
+        <span className="whitespace-nowrap">
+          {formatDate(r.check_in_date)} → {formatDate(r.check_out_date)}
+        </span>
+      ),
+    },
+    {
+      key: "guests",
+      header: "Pers.",
+      align: "right",
+      cell: (r) => r.guests_count,
+    },
+    {
+      key: "type",
+      header: "Type",
+      cell: (r) => r.room_type?.name ?? <Dash />,
+    },
+    {
+      key: "rate",
+      header: "Tarif / nuit",
+      align: "right",
+      cell: (r) => formatCFA(r.agreed_rate),
+    },
+    {
+      key: "advance",
+      header: "Avance",
+      align: "right",
+      cell: (r) => (r.advance_paid ? formatCFA(r.advance_paid) : <Dash />),
+    },
+  ];
+
+  if (canWrite) {
+    columns.push({
+      key: "actions",
+      header: "",
+      align: "right",
+      cell: (r) => {
+        const canCheckIn = r.status === "confirmed" || r.status === "pending";
+        if (!canCheckIn) return <Dash />;
+        return (
+          <div className="flex items-center justify-end gap-2">
+            <CheckInButton
+              reservationId={r.id}
+              availableRooms={availableRooms}
+            />
+            <ReservationActions id={r.id} />
+          </div>
+        );
+      },
+    });
+  }
+
   return (
     <div>
       <PageHeader
         title="Réservations"
         subtitle={`${reservations.length} réservation(s)`}
         action={
-          <NewReservationButton clients={clients} roomTypes={roomTypes} />
+          canWrite ? (
+            <NewReservationButton clients={clients} roomTypes={roomTypes} />
+          ) : undefined
         }
       />
       {reservations.length === 0 ? (
         <EmptyState>Aucune réservation.</EmptyState>
       ) : (
-        <div className="space-y-3">
-          {reservations.map((r) => {
-            const st = RESERVATION_STATUS[r.status];
-            const canCheckIn =
-              r.status === "confirmed" || r.status === "pending";
-            return (
-              <Card key={r.id}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold">
-                        {r.client?.name ?? "Client de passage"}
-                      </span>
-                      <Badge tone={st.tone}>{st.label}</Badge>
-                    </div>
-                    <div className="mt-0.5 text-sm text-fs-on-surface-variant">
-                      {formatDate(r.check_in_date)} →{" "}
-                      {formatDate(r.check_out_date)} · {r.guests_count} pers.
-                      {r.room_type?.name ? ` · ${r.room_type.name}` : ""}
-                    </div>
-                    <div className="mt-0.5 text-xs text-fs-on-surface-variant">
-                      Tarif {formatCFA(r.agreed_rate)} / nuit
-                      {r.advance_paid
-                        ? ` · avance ${formatCFA(r.advance_paid)}`
-                        : ""}
-                      {r.source ? ` · ${r.source}` : ""}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {canCheckIn ? (
-                      <>
-                        <CheckInButton
-                          reservationId={r.id}
-                          availableRooms={availableRooms}
-                        />
-                        <ReservationActions id={r.id} />
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+        <DataTable columns={columns} rows={reservations} rowKey={(r) => r.id} />
       )}
     </div>
   );
