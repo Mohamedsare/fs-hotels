@@ -95,6 +95,7 @@ export async function createWalkInStay(
   try {
     const hotelId = await getActiveHotelId();
     const supabase = await createClient();
+    const advance = num(fd, "advance_paid");
     const { data: stay, error } = await supabase
       .from("stays")
       .insert({
@@ -104,14 +105,30 @@ export async function createWalkInStay(
         nightly_rate: num(fd, "nightly_rate"),
         guests_count: Math.max(1, num(fd, "guests_count")),
         expected_check_out: checkout,
+        paid_total: advance > 0 ? advance : 0,
       })
       .select("id")
       .single();
     if (error) return { ok: false, error: error.message };
+    const stayId = (stay as { id: string }).id;
+
+    // Avance encaissée au check-in (facultative).
+    if (advance > 0) {
+      await supabase.from("payments").insert({
+        hotel_id: hotelId,
+        stay_id: stayId,
+        method: (str(fd, "method") ?? "cash") as PaymentMethod,
+        amount: advance,
+        reference: str(fd, "reference") ?? "Avance check-in",
+      });
+    }
+
     await supabase.from("rooms").update({ status: "occupied" }).eq("id", roomId);
-    await recomputeStay(supabase, (stay as { id: string }).id);
+    await recomputeStay(supabase, stayId);
     revalidatePath("/stays");
     revalidatePath("/rooms");
+    revalidatePath("/cash");
+    revalidatePath("/reception");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
@@ -169,6 +186,29 @@ export async function addPayment(
     await recomputeStay(supabase, stayId);
     revalidatePath("/stays");
     revalidatePath("/cash");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Prolonge un séjour : repousse la date de départ prévue et recalcule. */
+export async function extendStay(
+  stayId: string,
+  newCheckout: string,
+): Promise<FormState> {
+  if (!stayId) return { ok: false, error: "Séjour introuvable." };
+  if (!newCheckout) return { ok: false, error: "Nouvelle date de départ requise." };
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("stays")
+      .update({ expected_check_out: newCheckout })
+      .eq("id", stayId);
+    if (error) return { ok: false, error: error.message };
+    await recomputeStay(supabase, stayId);
+    revalidatePath("/stays");
+    revalidatePath("/reception");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };

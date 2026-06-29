@@ -116,6 +116,53 @@ export async function updateStaff(
   }
 }
 
+/** Active / désactive rapidement un membre (depuis l'annuaire). */
+export async function setStaffActive(
+  memberId: string,
+  active: boolean,
+): Promise<FormState> {
+  try {
+    await assertAdmin();
+    const hotelId = await getActiveHotelId();
+    const supabase = await createClient();
+
+    // Garde-fou : ne pas désactiver le dernier admin actif.
+    if (!active) {
+      const { data: member } = await supabase
+        .from("hotel_users")
+        .select("role")
+        .eq("id", memberId)
+        .eq("hotel_id", hotelId)
+        .maybeSingle();
+      if ((member as { role?: string } | null)?.role === "owner") {
+        const { data: admins } = await supabase
+          .from("hotel_users")
+          .select("id")
+          .eq("hotel_id", hotelId)
+          .eq("role", "owner")
+          .eq("active", true);
+        if ((admins ?? []).length <= 1) {
+          return {
+            ok: false,
+            error: "Impossible de désactiver le dernier administrateur.",
+          };
+        }
+      }
+    }
+
+    const { error } = await supabase
+      .from("hotel_users")
+      .update({ active })
+      .eq("id", memberId)
+      .eq("hotel_id", hotelId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/staff");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** Retire un membre de l'hôtel. */
 export async function removeStaff(memberId: string): Promise<FormState> {
   try {

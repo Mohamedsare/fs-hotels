@@ -7,6 +7,7 @@ import {
   BarChart3,
   BedDouble,
   CalendarCheck,
+  ConciergeBell,
   DoorOpen,
   FileText,
   Layers,
@@ -49,6 +50,7 @@ function setCollapsedPref(next: boolean) {
 
 const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/reception", label: "Réception", icon: ConciergeBell },
   { href: "/reservations", label: "Réservations", icon: CalendarCheck },
   { href: "/stays", label: "Séjours en cours", icon: BedDouble },
   { href: "/rooms", label: "Chambres", icon: DoorOpen },

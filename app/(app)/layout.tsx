@@ -23,6 +23,7 @@ export default async function AppLayout({
   // Entrées de navigation autorisées selon le rôle / les permissions.
   const allowed = [
     "/dashboard",
+    (can(m, "stays") || can(m, "reservations")) && "/reception",
     can(m, "reservations") && "/reservations",
     can(m, "stays") && "/stays",
     can(m, "rooms") && "/rooms",
