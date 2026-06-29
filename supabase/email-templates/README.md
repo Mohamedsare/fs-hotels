@@ -25,7 +25,7 @@ Supabase (limité et peu fiable en production).
 ## 1. Créer et vérifier un domaine sur Resend
 
 1. Crée un compte sur https://resend.com.
-2. **Domains → Add Domain** → saisis ton domaine (ex. `votre-domaine.bf`).
+2. **Domains → Add Domain** → saisis `fasostock.com` (le domaine d'envoi).
 3. Resend affiche des enregistrements DNS à ajouter chez ton registrar :
    - **SPF** (TXT)
    - **DKIM** (CNAME/TXT)
@@ -35,7 +35,7 @@ Supabase (limité et peu fiable en production).
 5. **API Keys → Create API Key** → copie la clé `re_…` (tu ne la reverras plus).
 
 > Adresse d'expéditeur : utilise une adresse **de ton domaine vérifié**, ex.
-> `no-reply@votre-domaine.bf` ou `bienvenue@votre-domaine.bf`.
+> `no-reply@fasostock.com` ou `bienvenue@fasostock.com`.
 
 ---
 
@@ -50,7 +50,7 @@ Dashboard Supabase → **Authentication → Emails → SMTP Settings** (ou
 | Port | `465` (SSL) — sinon `587` (TLS) |
 | Username | `resend` |
 | Password | **ta clé API Resend** (`re_…`) |
-| Sender email | `no-reply@votre-domaine.bf` (domaine vérifié) |
+| Sender email | `no-reply@fasostock.com` (domaine vérifié) |
 | Sender name | `FasoStock Hôtels` |
 
 Enregistre. (Optionnel : **Auth → Rate Limits** pour relever la limite d'envoi,
@@ -91,9 +91,9 @@ flux serveur** (`@supabase/ssr`) : les boutons pointent vers la route
 
 ### URLs à configurer
 **Authentication → URL Configuration** :
-- **Site URL** : `https://app.votre-domaine.bf` (ou `http://localhost:3000` en dev)
+- **Site URL** : `https://hotels.fasostock.com` (ou `http://localhost:3000` en dev)
   — c'est elle qui remplit `{{ .SiteURL }}` dans les liens.
-- **Redirect URLs** : ajoute `https://app.votre-domaine.bf/**` (et
+- **Redirect URLs** : ajoute `https://hotels.fasostock.com/**` (et
   `http://localhost:3000/**` en dev).
 
 ### Routes & pages de l'app (déjà implémentées)
@@ -133,8 +133,8 @@ nécessaire. (Si tu préfères le SDK : `npm i resend`.)
 ### b) Variables d'environnement (`.env.local`)
 ```
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
-RESEND_FROM="FasoStock Hôtels <bienvenue@votre-domaine.bf>"
-NEXT_PUBLIC_APP_URL=https://app.votre-domaine.bf
+RESEND_FROM="FasoStock Hôtels <bienvenue@fasostock.com>"
+NEXT_PUBLIC_APP_URL=https://hotels.fasostock.com
 ```
 
 ### c) Quand l'envoyer ?

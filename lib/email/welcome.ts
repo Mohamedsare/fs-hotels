@@ -7,8 +7,8 @@ import "server-only";
  *
  * Variables d'environnement requises (.env.local + dashboard Vercel) :
  *   RESEND_API_KEY        = re_xxx
- *   RESEND_FROM           = "FasoStock Hôtels <bienvenue@votre-domaine.bf>"  (domaine vérifié sur Resend)
- *   NEXT_PUBLIC_APP_URL   = https://app.votre-domaine.bf
+ *   RESEND_FROM           = "FasoStock Hôtels <bienvenue@fasostock.com>"  (domaine vérifié sur Resend)
+ *   NEXT_PUBLIC_APP_URL   = https://hotels.fasostock.com
  *
  * NB : supabase/email-templates/welcome.html est conservé comme aperçu visuel ;
  * la version qui fait foi (et qui est envoyée) est celle ci‑dessous.
@@ -23,7 +23,8 @@ export async function sendWelcomeEmail(params: {
     return { ok: false, error: "RESEND_API_KEY / RESEND_FROM manquants." };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.fasostock.bf";
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://hotels.fasostock.com";
   const html = buildWelcomeHtml(escapeHtml(params.hotelName), appUrl);
 
   const res = await fetch("https://api.resend.com/emails", {
